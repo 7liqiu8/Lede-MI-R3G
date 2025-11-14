@@ -11,7 +11,7 @@ iStoreOS 是基于 [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) 仓
 ## ⚡ 功能特性
 
 ### 默认
-- 管理ip：192.168.166.1
+- 管理ip：192.168.168.1
 - 用户名和密码：root/password
 - 无线wifi名称：OpenWrt
 - 无线wifi密码：password
