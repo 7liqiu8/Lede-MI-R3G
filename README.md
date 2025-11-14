@@ -10,6 +10,12 @@ iStoreOS 是基于 [coolsnowwolf/lede](https://github.com/coolsnowwolf/lede) 仓
 
 ## ⚡ 功能特性
 
+### 默认
+- 管理ip：192.168.166.1
+- 用户名和密码：root/password
+- 无线wifi名称：OpenWrt
+- 无线wifi密码：password
+
 ### 1️⃣ LuCI 插件
 - **luci-app-passwall2**：全功能科学上网管理界面  
 - **luci-app-easymesh**：支持 Mesh 网络管理  
