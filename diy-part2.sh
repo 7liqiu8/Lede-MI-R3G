@@ -21,7 +21,7 @@ git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app
 # git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall-packages
 
 # 添加 主题
-git clone https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
+git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git luci-theme-argon
 
 # -------------------------------
 # 系统定制部分
