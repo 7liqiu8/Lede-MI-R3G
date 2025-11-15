@@ -14,11 +14,11 @@
 # -------------------------------
 
 # 添加 luci-app-easymesh
-# git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app-easymesh
+git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app-easymesh
 
 # 添加 passwall2 插件及依赖包
-# git clone https://github.com/xiaorouji/openwrt-passwall2.git package/luci-app-passwall2
-# git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall-packages
+git clone https://github.com/xiaorouji/openwrt-passwall2.git package/luci-app-passwall2
+git clone https://github.com/xiaorouji/openwrt-passwall-packages.git package/openwrt-passwall-packages
 
 # 添加 主题
 # git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
