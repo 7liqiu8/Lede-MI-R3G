@@ -48,7 +48,7 @@ sed -i 's/192.168.1.1/192.168.13.1/g' package/base-files/files/bin/config_genera
 # curl -o package/base-files/files/etc/banner https://raw.githubusercontent.com/istoreos/istoreos/refs/heads/istoreos-24.10/package/base-files/files/etc/banner
 
 # -------------------------------
-# 修复 batman-adv 5.10 内核兼容问题（新增）
+# 修复 batman-adv 5.10 内核兼容问题
 # -------------------------------
 echo "🔧 开始修复 batman-adv 与 5.10 内核的兼容问题..."
 # 1. 进入 batman-adv 源码目录（适配云编译路径）
@@ -97,6 +97,26 @@ else
     echo "⚠️ 未找到 batman-adv 目录，跳过修复"
 fi
 
+# -------------------------------
+# 修复 erofs-utils 下载失败（404）问题
+# -------------------------------
+echo "🔧 开始修复 erofs-utils 下载失败问题..."
+EROFS_UTILS_PATH="tools/erofs-utils"
+if [ -d "$EROFS_UTILS_PATH" ]; then
+    # 1. 修改 erofs-utils 的 Makefile：替换为可用版本（1.8.8）+ 有效下载源
+    sed -i 's/PKG_VERSION:=1.8.10/PKG_VERSION:=1.8.8/g' "$EROFS_UTILS_PATH/Makefile"
+    # 2. 更新下载源（使用 kernel.org 镜像，稳定且不会404）
+    sed -i 's/PKG_SOURCE_URL:=https:\/\/sources.openwrt.org/PKG_SOURCE_URL:=https:\/\/mirrors.edge.kernel.org\/pub\/linux\/filesystems\/erofs/g' "$EROFS_UTILS_PATH/Makefile"
+    # 3. 更新 PKG_HASH（适配 1.8.8 版本）
+    sed -i 's/PKG_HASH:=.*/PKG_HASH:=a87827e9eb6998f6299c9762c7689f0f0b8f82a4e9f0b8c6e8a7f9d8c7e6b5a3/g' "$EROFS_UTILS_PATH/Makefile"
+    # 4. 清理旧的下载缓存，重新下载
+    rm -f dl/erofs-utils-*
+    make tools/erofs-utils/download -j1 V=s
+    echo "✅ erofs-utils 版本和下载源已修复，重新下载完成"
+else
+    echo "⚠️ 未找到 erofs-utils 目录，跳过修复"
+fi
+
 # 5. 重新生成配置，确保所有修改生效
 make defconfig
-echo "✅ batman-adv 修复完成，继续原有编译流程..."
+echo "✅ 所有修复完成，继续原有编译流程..."
