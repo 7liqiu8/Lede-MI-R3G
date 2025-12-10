@@ -48,67 +48,38 @@ sed -i 's/192.168.1.1/192.168.13.1/g' package/base-files/files/bin/config_genera
 # curl -o package/base-files/files/etc/banner https://raw.githubusercontent.com/istoreos/istoreos/refs/heads/istoreos-24.10/package/base-files/files/etc/banner
 
 # -------------------------------
-# 修复 batman-adv 5.10 内核兼容问题
+# 彻底禁用 batman-adv（核心修复）
 # -------------------------------
-echo "🔧 开始修复 batman-adv 与 5.10 内核的兼容问题..."
-BATMAN_ADV_FEEDS_PATH="feeds/routing/batman-adv"
-if [ -d "$BATMAN_ADV_FEEDS_PATH" ]; then
-    cd "$BATMAN_ADV_FEEDS_PATH" || exit 1
-
-    # 创建补丁文件，替换报错函数
-    cat > 001-fix-multicast-function.patch << 'EOF'
---- a/net/batman-adv/multicast.c
-+++ b/net/batman-adv/multicast.c
-@@ -208,7 +208,7 @@ static bool batadv_mcast_has_ip4_router(struct net_device *dev)
- 	if (!dev || !netif_is_bridge_master(dev))
- 		return false;
-
--	if (!br_multicast_has_router_adjacent(dev, ETH_P_IP))
-+	if (!br_multicast_has_querier_adjacent(dev, ETH_P_IP))
- 		return false;
-
- 	return true;
-EOF
-
-    # 提前下载 batman-adv 源码并应用补丁
-    cd ../../..
-    OPENWRT_ROOT=$(pwd)
-    make package/feeds/routing/batman-adv/download -j1 V=s
-    BUILD_DIR=$(find "$OPENWRT_ROOT/build_dir/target-*" -name "batman-adv-2023.3" | head -1)
-    if [ -n "$BUILD_DIR" ]; then
-        patch -p1 -d "$BUILD_DIR" < "$OPENWRT_ROOT/$BATMAN_ADV_FEEDS_PATH/001-fix-multicast-function.patch"
-        echo "✅ batman-adv 补丁已成功应用"
-    else
-        mkdir -p "$BATMAN_ADV_FEEDS_PATH/net/batman-adv"
-        wget -q -O "$BATMAN_ADV_FEEDS_PATH/net/batman-adv/multicast.c" https://raw.githubusercontent.com/open-mesh/batman-adv/2023.3/net/batman-adv/multicast.c
-        sed -i 's/br_multicast_has_router_adjacent/br_multicast_has_querier_adjacent/g' "$BATMAN_ADV_FEEDS_PATH/net/batman-adv/multicast.c"
-        echo "✅ 已直接修改 batman-adv 源码文件"
-    fi
-
-    # 临时关闭严格编译选项
-    sed -i '/CONFIG_PKG_CHECK_FORMAT_SECURITY=y/c\# CONFIG_PKG_CHECK_FORMAT_SECURITY is not set' .config
-    sed -i '/CONFIG_KERNEL_CC_STACKPROTECTOR_REGULAR=y/c\# CONFIG_KERNEL_CC_STACKPROTECTOR_REGULAR is not set' .config
-else
-    echo "⚠️ 未找到 batman-adv 目录，跳过修复"
-fi
+echo "🔧 彻底禁用 batman-adv 组件..."
+# 1. 从配置中删除所有 batman-adv 相关编译项
+sed -i '/batman-adv/d' .config
+echo "# CONFIG_PACKAGE_batman-adv is not set" >> .config
+echo "# CONFIG_PACKAGE_kmod-batman-adv is not set" >> .config
+# 2. 从 feeds 编译列表中移除 batman-adv
+sed -i '/batman-adv/d' feeds/routing/Makefile
+# 3. 删除 batman-adv 源码目录（防止编译扫描）
+rm -rf feeds/routing/batman-adv
+# 4. 清理 build_dir 中已下载的 batman-adv 源码
+rm -rf build_dir/target-*/batman-adv-*
+echo "✅ batman-adv 已彻底禁用，不会再触发编译"
 
 # -------------------------------
-# 彻底禁用 erofs-utils（核心修复）
+# 彻底禁用 erofs-utils
 # -------------------------------
-echo "🔧 彻底禁用 erofs-utils 编译依赖..."
+echo "🔧 彻底禁用 erofs-utils 工具..."
 # 1. 从 tools 编译列表中移除 erofs-utils
 sed -i '/erofs-utils/d' tools/Makefile
-# 2. 禁用 ERofs 文件系统相关配置（避免触发依赖）
+# 2. 禁用 ERofs 相关配置
 sed -i '/CONFIG_TARGET_ROOTFS_EROFS/c\# CONFIG_TARGET_ROOTFS_EROFS is not set' .config
 sed -i '/CONFIG_KERNEL_EROFS_FS/c\# CONFIG_KERNEL_EROFS_FS is not set' .config
-# 3. 删除 erofs-utils 工具目录（防止编译时扫描到）
+# 3. 删除 erofs-utils 目录
 rm -rf tools/erofs-utils
-# 4. 清理 dl 目录下的 erofs 缓存
+# 4. 清理缓存
 rm -f dl/erofs-utils-*
-echo "✅ erofs-utils 已彻底禁用，不会再触发编译"
+echo "✅ erofs-utils 已彻底禁用"
 
 # -------------------------------
 # 重新生成配置
 # -------------------------------
 make defconfig
-echo "✅ 所有修复完成，开始编译固件..."
+echo "✅ 所有禁用操作完成，开始编译固件..."
