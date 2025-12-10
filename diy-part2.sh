@@ -51,12 +51,11 @@ sed -i 's/192.168.1.1/192.168.13.1/g' package/base-files/files/bin/config_genera
 # 修复 batman-adv 5.10 内核兼容问题
 # -------------------------------
 echo "🔧 开始修复 batman-adv 与 5.10 内核的兼容问题..."
-# 1. 进入 batman-adv 源码目录（适配云编译路径）
 BATMAN_ADV_FEEDS_PATH="feeds/routing/batman-adv"
 if [ -d "$BATMAN_ADV_FEEDS_PATH" ]; then
     cd "$BATMAN_ADV_FEEDS_PATH" || exit 1
 
-    # 2. 创建补丁文件，替换报错函数
+    # 创建补丁文件，替换报错函数
     cat > 001-fix-multicast-function.patch << 'EOF'
 --- a/net/batman-adv/multicast.c
 +++ b/net/batman-adv/multicast.c
@@ -71,26 +70,22 @@ if [ -d "$BATMAN_ADV_FEEDS_PATH" ]; then
  	return true;
 EOF
 
-    # 3. 提前下载 batman-adv 源码并应用补丁（适配云编译的动态构建目录）
-    # 先获取 OpenWrt 根目录
+    # 提前下载 batman-adv 源码并应用补丁
     cd ../../..
     OPENWRT_ROOT=$(pwd)
-    # 下载 batman-adv 源码到构建目录（编译时会复用）
     make package/feeds/routing/batman-adv/download -j1 V=s
-    # 查找编译目录并应用补丁
     BUILD_DIR=$(find "$OPENWRT_ROOT/build_dir/target-*" -name "batman-adv-2023.3" | head -1)
     if [ -n "$BUILD_DIR" ]; then
         patch -p1 -d "$BUILD_DIR" < "$OPENWRT_ROOT/$BATMAN_ADV_FEEDS_PATH/001-fix-multicast-function.patch"
-        echo "✅ batman-adv 补丁已成功应用到 $BUILD_DIR"
+        echo "✅ batman-adv 补丁已成功应用"
     else
-        # 备用方案：直接修改 feeds 中的源码模板
         mkdir -p "$BATMAN_ADV_FEEDS_PATH/net/batman-adv"
         wget -q -O "$BATMAN_ADV_FEEDS_PATH/net/batman-adv/multicast.c" https://raw.githubusercontent.com/open-mesh/batman-adv/2023.3/net/batman-adv/multicast.c
         sed -i 's/br_multicast_has_router_adjacent/br_multicast_has_querier_adjacent/g' "$BATMAN_ADV_FEEDS_PATH/net/batman-adv/multicast.c"
         echo "✅ 已直接修改 batman-adv 源码文件"
     fi
 
-    # 4. 临时关闭严格编译选项，避免警告转错误
+    # 临时关闭严格编译选项
     sed -i '/CONFIG_PKG_CHECK_FORMAT_SECURITY=y/c\# CONFIG_PKG_CHECK_FORMAT_SECURITY is not set' .config
     sed -i '/CONFIG_KERNEL_CC_STACKPROTECTOR_REGULAR=y/c\# CONFIG_KERNEL_CC_STACKPROTECTOR_REGULAR is not set' .config
 else
@@ -98,25 +93,22 @@ else
 fi
 
 # -------------------------------
-# 修复 erofs-utils 下载失败（404）问题
+# 彻底禁用 erofs-utils（核心修复）
 # -------------------------------
-echo "🔧 开始修复 erofs-utils 下载失败问题..."
-EROFS_UTILS_PATH="tools/erofs-utils"
-if [ -d "$EROFS_UTILS_PATH" ]; then
-    # 1. 修改 erofs-utils 的 Makefile：替换为可用版本（1.8.8）+ 有效下载源
-    sed -i 's/PKG_VERSION:=1.8.10/PKG_VERSION:=1.8.8/g' "$EROFS_UTILS_PATH/Makefile"
-    # 2. 更新下载源（使用 kernel.org 镜像，稳定且不会404）
-    sed -i 's/PKG_SOURCE_URL:=https:\/\/sources.openwrt.org/PKG_SOURCE_URL:=https:\/\/mirrors.edge.kernel.org\/pub\/linux\/filesystems\/erofs/g' "$EROFS_UTILS_PATH/Makefile"
-    # 3. 更新 PKG_HASH（适配 1.8.8 版本）
-    sed -i 's/PKG_HASH:=.*/PKG_HASH:=a87827e9eb6998f6299c9762c7689f0f0b8f82a4e9f0b8c6e8a7f9d8c7e6b5a3/g' "$EROFS_UTILS_PATH/Makefile"
-    # 4. 清理旧的下载缓存，重新下载
-    rm -f dl/erofs-utils-*
-    make tools/erofs-utils/download -j1 V=s
-    echo "✅ erofs-utils 版本和下载源已修复，重新下载完成"
-else
-    echo "⚠️ 未找到 erofs-utils 目录，跳过修复"
-fi
+echo "🔧 彻底禁用 erofs-utils 编译依赖..."
+# 1. 从 tools 编译列表中移除 erofs-utils
+sed -i '/erofs-utils/d' tools/Makefile
+# 2. 禁用 ERofs 文件系统相关配置（避免触发依赖）
+sed -i '/CONFIG_TARGET_ROOTFS_EROFS/c\# CONFIG_TARGET_ROOTFS_EROFS is not set' .config
+sed -i '/CONFIG_KERNEL_EROFS_FS/c\# CONFIG_KERNEL_EROFS_FS is not set' .config
+# 3. 删除 erofs-utils 工具目录（防止编译时扫描到）
+rm -rf tools/erofs-utils
+# 4. 清理 dl 目录下的 erofs 缓存
+rm -f dl/erofs-utils-*
+echo "✅ erofs-utils 已彻底禁用，不会再触发编译"
 
-# 5. 重新生成配置，确保所有修改生效
+# -------------------------------
+# 重新生成配置
+# -------------------------------
 make defconfig
-echo "✅ 所有修复完成，继续原有编译流程..."
+echo "✅ 所有修复完成，开始编译固件..."
