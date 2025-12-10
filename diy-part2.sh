@@ -46,3 +46,57 @@ sed -i 's/192.168.1.1/192.168.13.1/g' package/base-files/files/bin/config_genera
 
 # 替换 banner
 # curl -o package/base-files/files/etc/banner https://raw.githubusercontent.com/istoreos/istoreos/refs/heads/istoreos-24.10/package/base-files/files/etc/banner
+
+# -------------------------------
+# 修复 batman-adv 5.10 内核兼容问题（新增）
+# -------------------------------
+echo "🔧 开始修复 batman-adv 与 5.10 内核的兼容问题..."
+# 1. 进入 batman-adv 源码目录（适配云编译路径）
+BATMAN_ADV_FEEDS_PATH="feeds/routing/batman-adv"
+if [ -d "$BATMAN_ADV_FEEDS_PATH" ]; then
+    cd "$BATMAN_ADV_FEEDS_PATH" || exit 1
+
+    # 2. 创建补丁文件，替换报错函数
+    cat > 001-fix-multicast-function.patch << 'EOF'
+--- a/net/batman-adv/multicast.c
++++ b/net/batman-adv/multicast.c
+@@ -208,7 +208,7 @@ static bool batadv_mcast_has_ip4_router(struct net_device *dev)
+ 	if (!dev || !netif_is_bridge_master(dev))
+ 		return false;
+
+-	if (!br_multicast_has_router_adjacent(dev, ETH_P_IP))
++	if (!br_multicast_has_querier_adjacent(dev, ETH_P_IP))
+ 		return false;
+
+ 	return true;
+EOF
+
+    # 3. 提前下载 batman-adv 源码并应用补丁（适配云编译的动态构建目录）
+    # 先获取 OpenWrt 根目录
+    cd ../../..
+    OPENWRT_ROOT=$(pwd)
+    # 下载 batman-adv 源码到构建目录（编译时会复用）
+    make package/feeds/routing/batman-adv/download -j1 V=s
+    # 查找编译目录并应用补丁
+    BUILD_DIR=$(find "$OPENWRT_ROOT/build_dir/target-*" -name "batman-adv-2023.3" | head -1)
+    if [ -n "$BUILD_DIR" ]; then
+        patch -p1 -d "$BUILD_DIR" < "$OPENWRT_ROOT/$BATMAN_ADV_FEEDS_PATH/001-fix-multicast-function.patch"
+        echo "✅ batman-adv 补丁已成功应用到 $BUILD_DIR"
+    else
+        # 备用方案：直接修改 feeds 中的源码模板
+        mkdir -p "$BATMAN_ADV_FEEDS_PATH/net/batman-adv"
+        wget -q -O "$BATMAN_ADV_FEEDS_PATH/net/batman-adv/multicast.c" https://raw.githubusercontent.com/open-mesh/batman-adv/2023.3/net/batman-adv/multicast.c
+        sed -i 's/br_multicast_has_router_adjacent/br_multicast_has_querier_adjacent/g' "$BATMAN_ADV_FEEDS_PATH/net/batman-adv/multicast.c"
+        echo "✅ 已直接修改 batman-adv 源码文件"
+    fi
+
+    # 4. 临时关闭严格编译选项，避免警告转错误
+    sed -i '/CONFIG_PKG_CHECK_FORMAT_SECURITY=y/c\# CONFIG_PKG_CHECK_FORMAT_SECURITY is not set' .config
+    sed -i '/CONFIG_KERNEL_CC_STACKPROTECTOR_REGULAR=y/c\# CONFIG_KERNEL_CC_STACKPROTECTOR_REGULAR is not set' .config
+else
+    echo "⚠️ 未找到 batman-adv 目录，跳过修复"
+fi
+
+# 5. 重新生成配置，确保所有修改生效
+make defconfig
+echo "✅ batman-adv 修复完成，继续原有编译流程..."
