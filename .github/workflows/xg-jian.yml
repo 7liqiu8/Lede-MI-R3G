@@ -5,7 +5,7 @@
 # 描述：使用 GitHub Actions 自动构建 OpenWrt 固件（iStoreOS 版本）
 #
 
-name: gai
+name: xg-jian
 
 on:
   repository_dispatch:
@@ -19,7 +19,7 @@ env:
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: jian.config
   DIY_P1_SH: diy-part1.sh
-  DIY_P2_SH: diy-part2.1.sh
+  DIY_P2_SH: xg-diy-part2.1.sh
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
