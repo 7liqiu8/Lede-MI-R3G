@@ -38,6 +38,23 @@ git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app
 # 修改默认 IP（如有需要可取消注释）
 sed -i 's/192.168.1.1/192.168.13.1/g' package/base-files/files/bin/config_generate
 
+# 修复 batman-adv 编译错误（用于支持 EasyMesh）
+echo "应用 batman-adv 内核兼容性补丁..."
+TARGET_FILE="package/feeds/routing/batman-adv/src/compat-hacks.h"
+if [ -f "$TARGET_FILE" ]; then
+    echo "备份原文件: $TARGET_FILE -> ${TARGET_FILE}.bak"
+    cp "$TARGET_FILE" "${TARGET_FILE}.bak"
+fi
+echo "从 GitHub 下载修复补丁..."
+curl -fSLo "$TARGET_FILE" \
+    "https://raw.githubusercontent.com/No06/routing/main/batman-adv/src/compat-hacks.h"
+if [ $? -eq 0 ]; then
+    echo "✅ batman-adv 补丁应用成功。"
+else
+    echo "⚠️  警告：下载补丁失败，可能影响编译。尝试使用备份文件。"
+    [ -f "${TARGET_FILE}.bak" ] && cp "${TARGET_FILE}.bak" "$TARGET_FILE"
+fi
+
 # 修改主机名
 # sed -i 's/LEDE/R3G/g' package/base-files/files/bin/config_generate
 # sed -i 's/LEDE/R3G/g' package/base-files/files/etc/init.d/system
