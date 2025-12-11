@@ -1,0 +1,5 @@
+config zram-swap
+    option enabled '1'        # 默认启用
+    option disksize '128M'    # 256MB内存适配128M zram（最优值）
+    option alg 'lzo-rle'      # 低CPU开销的压缩算法
+    option memlimit '25%'     # 限制zram占用物理内存比例，避免过度压缩
