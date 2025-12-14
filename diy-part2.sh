@@ -13,6 +13,8 @@
 # 自定义包 & 插件部分
 # -------------------------------
 
+git clone https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter    
+
 # 添加 luci-app-easymesh
 git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app-easymesh
 
