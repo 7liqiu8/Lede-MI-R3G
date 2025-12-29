@@ -17,6 +17,42 @@ git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/luci-ap
 git clone --depth 1 https://github.com/sbwml/luci-app-openlist2 package/luci-app-openlist2
 git clone https://github.com/kob/nf_deaf-openwrt.git package/kernel/nf_deaf
 
+# ==============================================
+# 新增：nf_deaf 编译报错修复（核心修正，保留原有脚本不变，仅追加此处）
+# ==============================================
+echo "开始修正 nf_deaf Makefile 配置，解决404和编译报错..."
+# 1. 定义Makefile路径
+NF_DEAF_MAKEFILE="package/kernel/nf_deaf/Makefile"
+# 2. 检查Makefile是否存在
+if [ -f "$NF_DEAF_MAKEFILE" ]; then
+    # 2.1 修正下载地址：指向kob仓库的正确标签tar包路径（带v前缀，适配GitHub规范）
+    sed -i 's|PKG_SOURCE_URL:=.*|PKG_SOURCE_URL:=https://github.com/kob/nf_deaf-openwrt/archive/refs/tags/|g' "$NF_DEAF_MAKEFILE"
+    sed -i 's|PKG_SOURCE:=.*|PKG_SOURCE:=v1.1.tar.xz|g' "$NF_DEAF_MAKEFILE"
+    # 2.2 强制指定使用tar包下载，屏蔽无效Git克隆（避免兜底失败）
+    sed -i '/PKG_SOURCE_PROTO/d' "$NF_DEAF_MAKEFILE"  # 删除原有PROTO配置
+    sed -i '/PKG_SOURCE_VERSION/a PKG_SOURCE_PROTO:=tar' "$NF_DEAF_MAKEFILE"  # 新增tar配置
+    # 2.3 添加SHA256校验和（先计算真实值，再替换下面的<你的SHA256值>）
+    sed -i '/PKG_LICENSE/d' "$NF_DEAF_MAKEFILE"  # 先删除原有LICENSE行后插入，确保位置正确
+    cat >> "$NF_DEAF_MAKEFILE" << EOF
+PKG_SHA256SUM:=<你的SHA256值>
+PKG_LICENSE:=GPL-2.0
+EOF
+    # 2.4 修正版本对应（可选，确保和标签一致）
+    sed -i 's|PKG_SOURCE_VERSION:=.*|PKG_SOURCE_VERSION:=v1.1|g' "$NF_DEAF_MAKEFILE"
+    echo "✅ nf_deaf Makefile 配置修正完成！"
+else
+    echo "⚠️  警告：未找到 nf_deaf Makefile，跳过修正！"
+fi
+
+# 3. 清理无效缓存（避免云编译残留旧文件干扰）
+echo "开始清理 nf_deaf 无效缓存..."
+rm -rf openwrt/dl/nf_deaf-1.1.tar.xz  # 删除旧的404下载包
+rm -rf package/kernel/nf_deaf/nf_deaf-1.1  # 删除无效Git克隆目录
+echo "✅ nf_deaf 缓存清理完成！"
+# ==============================================
+# nf_deaf 修复结束
+# ==============================================
+
 # 添加 luci-app-easymesh
 git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app-easymesh
 
