@@ -15,6 +15,7 @@
 
 git clone --depth 1 https://github.com/gdy666/luci-app-lucky.git package/luci-app-lucky
 git clone --depth 1 https://github.com/sbwml/luci-app-openlist2 package/luci-app-openlist2
+git clone https://github.com/kob/nf_deaf-openwrt.git package/kernel/nf_deaf
 
 # 添加 luci-app-easymesh
 git clone https://github.com/theosoft-git/luci-app-easymesh.git package/luci-app-easymesh
